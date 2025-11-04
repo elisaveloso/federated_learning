@@ -1,0 +1,61 @@
+% /home/elisaveloso/federated_learning/chapters/chapters/introduction.tex
+% Introduction chapter for a thesis/report. Insert into main document using \include or \input.
+
+\chapter{Introduction}
+\label{chap:introduction}
+
+\begin{abstract}
+This chapter introduces the problem domain, motivates the work, summarizes the main contributions,
+and outlines the structure of the thesis. Replace the placeholders below with concise text
+that reflects your project.
+\end{abstract}
+
+\section{Motivation}
+% Explain why the topic is important, relevant applications, and high-level challenges.
+Federated learning enables collaborative model training across multiple devices or institutions
+while keeping data localized. This approach addresses privacy, communication, and data
+heterogeneity concerns that arise in centralized learning systems.
+
+\section{Background and problem statement}
+% Brief background and a precise statement of the research problem.
+Provide a short technical background on machine learning, distributed optimization, and privacy-preserving techniques.
+State the concrete problem you address, including assumptions and scope.
+
+Example: consider minimizing a global objective aggregated from K clients,
+\[
+    \min_{w\in\mathbb{R}^d} F(w) \;=\; \sum_{k=1}^K p_k F_k(w),
+\]
+where \(F_k\) is the local objective at client \(k\) and \(p_k\ge 0\), \(\sum_k p_k = 1\).
+Discuss challenges such as communication efficiency, non-iid data, and system heterogeneity.
+
+\section{Contributions}
+List the main contributions of the thesis/report. Use bullet points for clarity.
+\begin{itemize}
+    \item A novel algorithm for communication-efficient federated learning that handles non-iid local data.
+    \item Theoretical convergence guarantees under realistic client sampling and delay models.
+    \item Empirical evaluation on standard benchmarks demonstrating improved accuracy and reduced communication.
+\end{itemize}
+
+\section{Methodology (brief)}
+Summarize the approach and methods used: algorithm design, theoretical analysis, and experiments.
+Mention datasets, baselines, and evaluation metrics you plan to use.
+
+\section{Organization of the thesis}
+Outline the structure of the remaining chapters.
+\begin{itemize}
+    \item Chapter~\ref{chap:related} reviews related work and places this research in context.
+    \item Chapter~\ref{chap:method} describes the proposed algorithm and theoretical analysis.
+    \item Chapter~\ref{chap:experiments} presents experimental setup and results.
+    \item Chapter~\ref{chap:conclusion} concludes and discusses future directions.
+\end{itemize}
+
+\section{Notation}
+Introduce commonly used notation for the rest of the document.
+\begin{itemize}
+    \item \(K\): number of clients.
+    \item \(n_k\): number of samples at client \(k\).
+    \item \(w\in\mathbb{R}^d\): global model parameters.
+    \item \(\nabla F_k(w)\): gradient of local objective at client \(k\).
+\end{itemize}
+
+% TODO: replace placeholders with detailed content, add citations (\cite{author:year}), figures, and tables as needed.
