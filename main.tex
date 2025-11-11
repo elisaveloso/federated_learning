@@ -1,0 +1,37 @@
+\documentclass[12pt,a4paper]{report}
+
+% Pacotes básicos
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+% \usepackage[brazil]{babel}
+\usepackage[english]{babel}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{lipsum} % para texto de exemplo
+
+% Informações da tese
+\title{Federated Learning: An Exploration of Communication-Efficient Methods}
+\author{Elisa Veloso}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+\lipsum[1] % texto fictício
+
+% Importa os capítulos
+\include{chapters/introduction}
+\include{chapters/methodology}
+\include{chapters/experiments}
+\include{chapters/conclusion}
+
+% Bibliografia
+\bibliographystyle{plain}
+\bibliography{backmatter/bibliography}
+
+\end{document}
