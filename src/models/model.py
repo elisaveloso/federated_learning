@@ -48,41 +48,27 @@ def get_vit_model(input_shape=(224, 224, 3), num_classes=1):
     vit_model = TFViTForImageClassification.from_pretrained(
         model_id,
         num_labels=1, # Binary classification for us? Or 2? 
-        ignore_mismatched_sizes=True
+        ignore_mismatched_sizes=True,
+        use_safetensors=False
     )
     
-    # We need to wrap it in a Keras Functional API model if we want to add Resizing layers easily 
-    # OR we just use it directly but data must be preprocessed.
-    # To keep it consistent, let's wrap it and ensure input preprocessing.
-    # ViT expects (batch, 3, 224, 224) if NCHW or (batch, 224, 224, 3) provided TF handles it?
-    # TFViTForImageClassification main input is 'pixel_values'.
-    # Hugging Face transformers usually expect preprocessed inputs. 
-    # But for simplicity, let's build a Keras wrapper that includes resizing/normalization.
+  
     
-    inputs = layers.Input(shape=input_shape)
+    #inputs = layers.Input(shape=input_shape)
+    inputs =  tf.keras.Input(shape=input_shape)
     
     # Hugging Face ViT ImageProcessor (default) usually does:
     # Resize to (224, 224), Rescale 1/255, Normalize (mean=[0.5,0.5,0.5], std=[0.5,0.5,0.5])
     
     # 1. Resize/Cast
-    x = layers.Resizing(224, 224)(inputs)
-    x = layers.Rescaling(1./127.5, offset=-1)(x) # Map 0..255 to -1..1 (approx for 0.5 mean/std)
-    
+    # x = layers.Resizing(224, 224)(inputs)
+    # x = layers.Rescaling(1./127.5, offset=-1)(x) # Map 0..255 to -1..1 (approx for 0.5 mean/std)
+    x = tf.transpose(inputs, perm=[0, 3, 1, 2])
+     
     # 2. Transpose to channels_first if required by the *config*? 
-    # TFViT models typically accept channels_last (NHWC) in typical Keras flow
-    # but let's check. Default TF implementation usually creates a model that accepts dict or tensor.
-    # Let's rely on the internal Keras compatibility.
-    
-    # However, transformers models output an object (TFSequenceClassifierOutput).
-    # We need the logits.
-    
-    # Limitation: Wrapping TFViTForImageClassification directly in Functional API 
-    # can be tricky with saving/loading. 
-    # An alternative is to just use a custom loop or sub-class.
-    # Better yet: extract the 'vit' (encoder) part and add our head.
-    
-    # Simplified approach: Use the model as a layer.
-    outputs = vit_model.vit(x)[0] # access the last hidden state
+   
+    outputs = vit_model.vit(pixel_values=x)[0] 
+
     # Use the CLS token (index 0)
     cls_token = outputs[:, 0, :] 
     x = layers.Dropout(0.1)(cls_token)

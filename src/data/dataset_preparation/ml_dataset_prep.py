@@ -11,8 +11,8 @@ from uuid import uuid4
 def is_corrupted(image_path):
     is_corrupted = False
     try:
-        img = Image.open(image_path) # open the image file
-        img.verify() # verify that it is, in fact an image
+        img = Image.open(image_path) 
+        img.verify() 
         img = Image.open(image_path) 
         img.transpose(Image.FLIP_LEFT_RIGHT)
         img.close()
@@ -68,7 +68,6 @@ def augment_images(n_images, dataset_dir, class_type, class_qty):
         except OSError:
             pass
 
-    # defensive checks
     if n_images <= 0:
         return
 
@@ -76,12 +75,10 @@ def augment_images(n_images, dataset_dir, class_type, class_qty):
         raise ValueError(f"No original images found in '{images_dir}' to augment. \n"
                          f"Ensure the directory exists and contains image files (jpg/png/...)")
 
-    # ensure we can sample (allow replacement) and make n_images divisible by number of augmenters
     q, mod = divmod(n_images, len(aug_list))
     if mod != 0:
         n_images = n_images + (len(aug_list) - mod)
 
-    # allow sampling with replacement when requesting more samples than available originals
     selected_images = np.random.choice(original_images_list, n_images, replace=True)
 
     batch_size = max(1, n_images // len(aug_list))
@@ -89,7 +86,6 @@ def augment_images(n_images, dataset_dir, class_type, class_qty):
 
     with tqdm(total=n_images, desc='Augmentating') as pbar:
         for i, aug in enumerate(aug_list):
-            # some batches might be shorter depending on rounding; guard index
             if i >= len(image_batches):
                 break
             image_batch = image_batches[i]

@@ -18,14 +18,14 @@ DATASET_DIR = '/home/elisaveloso/federated_learning/src/data/datasets/daninhas__
 IMG_SIZE = (224, 224)
 BATCH_SIZE = 4
 EPOCHS = 10 
-NUM_RUNS = 3 # Number of repeats for boxplots
+NUM_RUNS = 3 # repeats for boxplots
 RESULTS_DIR = 'results'
 
 # Mixed Precision
 mixed_precision.set_global_policy('mixed_float16')
 
 def load_data():
-    # Labels: 'nao_daninha' will be 0, 'daninha' will be 1
+    # Labels: 'nao_daninha' 0, 'daninha' 1
     class_names = ['nao_daninha', 'daninha']
     
     print(f"Loading data from {DATASET_DIR}...")
@@ -43,16 +43,13 @@ def load_data():
         seed=123
     )
 
-    # Split into Train (70%), Val (15%), Test (15%)
-    # Getting the size to split manually by batches might be tricky if not cached.
-    # Simpler approach: Use validation_split feature twice? No, that relies on seed.
-    # Let's take batches directly.
+    # Train (70%), Val (15%), Test (15%)
+   
     
     full_ds = full_ds.shuffle(50, seed=42)
     ds_batches = tf.data.experimental.cardinality(full_ds).numpy()
     
     if ds_batches < 0:
-        # If cardinality is unknown, iterate to count (slow but safe)
         ds_batches = len(list(full_ds))
 
     train_size = int(0.7 * ds_batches)
@@ -78,9 +75,13 @@ def run_experiment():
 
     train_ds, val_ds, test_ds = load_data()
 
+  #  models_to_test = {
+  #      'EfficientNetB0': get_efficientnet_model,
+  #      'ResNet50': get_resnet_model,
+  #      'ViT': get_vit_model
+  #  }
+    
     models_to_test = {
-        'EfficientNetB0': get_efficientnet_model,
-        'ResNet50': get_resnet_model,
         'ViT': get_vit_model
     }
 
@@ -137,8 +138,6 @@ def run_experiment():
                 'Set': 'Test'
             })
             
-            # Save Train metrics for boxplot? Usually boxplot is for Test metrics.
-            # We already stored Test metrics.
 
         # Plot training history (averaged over runs for the line graph)
         plot_training_history(model_histories, model_name, RESULTS_DIR)
