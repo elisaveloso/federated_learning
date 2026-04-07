@@ -38,16 +38,10 @@ def get_batches(list_to_split, batch_size):
 
 
 def augment_images(n_images, dataset_dir, class_type, class_qty):
-    aug_list = []
-    aug_list.append(iaa.Multiply((0.5, 1.5)))
-    aug_list.append(iaa.SaltAndPepper(0.001))
-    aug_list.append(iaa.GaussianBlur(sigma=(0.0, 1.2)))
-    aug_list.append(iaa.MultiplyBrightness((0.8, 1.2)))
-    aug_list.append(iaa.GammaContrast((0.8, 1.2)))
-    aug_list.append(iaa.LinearContrast((0.8, 1.2)))
-    aug_list.append(iaa.imgcorruptlike.Brightness(severity=1))
-    aug_list.append(iaa.imgcorruptlike.Spatter(severity=1))
-    aug_list.append(iaa.Affine(shear=(-5, 5)))
+    aug_list = [
+        iaa.Fliplr(1.0),
+        iaa.Flipud(1.0),
+    ]
 
     images_dir = os.path.join(dataset_dir, class_type)
 

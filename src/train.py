@@ -3,6 +3,7 @@ import tensorflow as tf
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 from datetime import datetime
 from tensorflow.keras import mixed_precision
 
@@ -20,46 +21,139 @@ BATCH_SIZE = 4
 EPOCHS = 10 
 NUM_RUNS = 3 # repeats for boxplots
 RESULTS_DIR = 'results'
+SEED = 123
+TEST_SPLIT = 0.15
+VAL_SPLIT = 0.15
 
 # Mixed Precision
 mixed_precision.set_global_policy('mixed_float16')
 
+def collect_original_image_paths(dataset_dir, class_names):
+    image_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff')
+    file_paths = []
+    labels = []
+
+    for label_idx, class_name in enumerate(class_names):
+        class_dir = os.path.join(dataset_dir, class_name)
+        if not os.path.isdir(class_dir):
+            continue
+
+        for file_name in os.listdir(class_dir):
+            lower_name = file_name.lower()
+            if not lower_name.endswith(image_extensions):
+                continue
+            # Ignore previously generated augmented images.
+            if 'aug' in lower_name:
+                continue
+
+            file_paths.append(os.path.join(class_dir, file_name))
+            labels.append(label_idx)
+
+    return file_paths, labels
+
+
+def stratified_split(file_paths, labels, test_split=0.15, val_split=0.15, seed=123):
+    rng = random.Random(seed)
+    class_to_indices = {}
+
+    for idx, label in enumerate(labels):
+        class_to_indices.setdefault(label, []).append(idx)
+
+    train_indices = []
+    val_indices = []
+    test_indices = []
+
+    for class_indices in class_to_indices.values():
+        rng.shuffle(class_indices)
+        n_total = len(class_indices)
+
+        n_test = int(round(n_total * test_split))
+        n_test = min(max(n_test, 1), n_total - 2) if n_total >= 3 else max(0, n_total - 2)
+
+        remaining_after_test = n_total - n_test
+        val_ratio_on_remaining = val_split / (1.0 - test_split) if (1.0 - test_split) > 0 else 0.0
+        n_val = int(round(remaining_after_test * val_ratio_on_remaining))
+        n_val = min(max(n_val, 1), remaining_after_test - 1) if remaining_after_test >= 2 else 0
+
+        test_part = class_indices[:n_test]
+        val_part = class_indices[n_test:n_test + n_val]
+        train_part = class_indices[n_test + n_val:]
+
+        test_indices.extend(test_part)
+        val_indices.extend(val_part)
+        train_indices.extend(train_part)
+
+    rng.shuffle(train_indices)
+    rng.shuffle(val_indices)
+    rng.shuffle(test_indices)
+
+    def gather(indices):
+        return [file_paths[i] for i in indices], [labels[i] for i in indices]
+
+    train_paths, train_labels = gather(train_indices)
+    val_paths, val_labels = gather(val_indices)
+    test_paths, test_labels = gather(test_indices)
+
+    return train_paths, train_labels, val_paths, val_labels, test_paths, test_labels
+
+
+def build_dataset(paths, labels, training=False):
+    ds = tf.data.Dataset.from_tensor_slices((paths, labels))
+
+    def load_and_preprocess(path, label):
+        img = tf.io.read_file(path)
+        img = tf.image.decode_image(img, channels=3, expand_animations=False)
+        img = tf.image.resize(img, IMG_SIZE)
+        img = tf.cast(img, tf.float32) / 255.0
+        label = tf.cast(label, tf.float32)
+        return img, label
+
+    if training:
+        ds = ds.shuffle(buffer_size=max(len(paths), BATCH_SIZE), seed=SEED)
+
+    ds = ds.map(load_and_preprocess, num_parallel_calls=tf.data.AUTOTUNE)
+    ds = ds.batch(BATCH_SIZE)
+    return ds
+
+
+def mirror_augment_training_dataset(train_ds):
+    mirrored_ds = train_ds.map(
+        lambda images, labels: (tf.image.flip_left_right(images), labels),
+        num_parallel_calls=tf.data.AUTOTUNE
+    )
+    train_ds = train_ds.concatenate(mirrored_ds)
+    train_ds = train_ds.shuffle(buffer_size=100, seed=SEED)
+    return train_ds
+
+
 def load_data():
     # Labels: 'nao_daninha' 0, 'daninha' 1
     class_names = ['nao_daninha', 'daninha']
-    
+
     print(f"Loading data from {DATASET_DIR}...")
     print(f"Class mapping: {class_names}")
 
-    # Load full dataset
-    full_ds = tf.keras.utils.image_dataset_from_directory(
-        DATASET_DIR,
-        labels='inferred',
-        class_names=class_names,
-        color_mode='rgb',
-        batch_size=BATCH_SIZE,
-        image_size=IMG_SIZE,
-        shuffle=True,
-        seed=123
+    file_paths, labels = collect_original_image_paths(DATASET_DIR, class_names)
+    if not file_paths:
+        raise ValueError(f"No original images found in {DATASET_DIR}.")
+
+    train_paths, train_labels, val_paths, val_labels, test_paths, test_labels = stratified_split(
+        file_paths,
+        labels,
+        test_split=TEST_SPLIT,
+        val_split=VAL_SPLIT,
+        seed=SEED,
     )
 
-    # Train (70%), Val (15%), Test (15%)
-   
-    
-    full_ds = full_ds.shuffle(50, seed=42)
-    ds_batches = tf.data.experimental.cardinality(full_ds).numpy()
-    
-    if ds_batches < 0:
-        ds_batches = len(list(full_ds))
+    print(f"Total original images: {len(file_paths)}")
+    print(f"Train images (pre-augmentation): {len(train_paths)}")
+    print(f"Validation images: {len(val_paths)}")
+    print(f"Test images: {len(test_paths)}")
 
-    train_size = int(0.7 * ds_batches)
-    val_size = int(0.15 * ds_batches)
-    test_size = ds_batches - train_size - val_size
-
-    train_ds = full_ds.take(train_size)
-    remaining = full_ds.skip(train_size)
-    val_ds = remaining.take(val_size)
-    test_ds = remaining.skip(val_size)
+    train_ds = build_dataset(train_paths, train_labels, training=True)
+    train_ds = mirror_augment_training_dataset(train_ds)
+    val_ds = build_dataset(val_paths, val_labels, training=False)
+    test_ds = build_dataset(test_paths, test_labels, training=False)
 
     # Autotune for performance
     AUTOTUNE = tf.data.AUTOTUNE
