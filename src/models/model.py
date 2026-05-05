@@ -77,3 +77,43 @@ def get_vit_model(input_shape=(224, 224, 3), num_classes=1):
     model = models.Model(inputs, final_output, name="ViT")
     return model
 
+def get_darknet_model(input_shape=(224, 224, 3), num_classes=1):
+    def darknet_conv(x, filters, kernel_size, strides=1):
+        x = layers.Conv2D(filters, kernel_size, strides=strides, padding='same', use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.LeakyReLU(alpha=0.1)(x)
+        return x
+
+    def darknet_block(x, filters, num_blocks):
+        for _ in range(num_blocks):
+            shortcut = x
+            x = darknet_conv(x, filters // 2, kernel_size=1)
+            x = darknet_conv(x, filters, kernel_size=3)
+            x = layers.Add()([shortcut, x])
+        return x
+
+    inputs = layers.Input(shape=input_shape)
+    
+    x = darknet_conv(inputs, 32, kernel_size=3)
+    
+    x = darknet_conv(x, 64, kernel_size=3, strides=2)
+    x = darknet_block(x, 64, num_blocks=1)
+    
+    x = darknet_conv(x, 128, kernel_size=3, strides=2)
+    x = darknet_block(x, 128, num_blocks=2)
+    
+    x = darknet_conv(x, 256, kernel_size=3, strides=2)
+    x = darknet_block(x, 256, num_blocks=8)
+    
+    x = darknet_conv(x, 512, kernel_size=3, strides=2)
+    x = darknet_block(x, 512, num_blocks=8)
+    
+    x = darknet_conv(x, 1024, kernel_size=3, strides=2)
+    x = darknet_block(x, 1024, num_blocks=4)
+    
+    x = layers.GlobalAveragePooling2D()(x)
+    x = layers.Dropout(0.2)(x)
+    outputs = layers.Dense(1, activation='sigmoid')(x)
+    
+    model = models.Model(inputs, outputs, name="DarkNet53")
+    return model
